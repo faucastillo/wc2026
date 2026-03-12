@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup 2026 Simulator — Predict & Simulate Every Match</title>
+    <meta name="description" content="Interactive FIFA World Cup 2026 simulator. Predict group stage results, resolve playoffs, and simulate the full knockout bracket with realistic outcomes.">
+    <meta name="keywords" content="World Cup 2026, FIFA, soccer simulator, football predictor, bracket, knockout stage">
+    <meta name="author" content="Fausto">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="World Cup 2026 Simulator">
+    <meta property="og:description" content="Predict and simulate every match of the FIFA World Cup 2026. Interactive group stages, playoff resolution, and full knockout bracket.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://hatscripts.github.io/circle-flags/flags/un.svg">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="World Cup 2026 Simulator">
+    <meta name="twitter:description" content="Predict and simulate every match of the FIFA World Cup 2026.">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased p-4 sm:p-6 relative min-h-screen flex flex-col">
+
+    <div class="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-100/50 to-transparent -z-10"></div>
+
+    <!-- Toast container for error notifications -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <div class="max-w-[1400px] mx-auto flex-1 w-full">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-light tracking-wide text-gray-900">🏆 World Cup 2026 <span class="font-bold">Simulator</span></h1>
+                <p class="text-xs text-gray-400 mt-1 tracking-wide">48 TEAMS · 12 GROUPS · 104 MATCHES</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="lock-toggle" onclick="toggleLock()" aria-label="Toggle real results lock" title="Lock real results" class="flex items-center gap-2 bg-emerald-600 text-white border-2 border-emerald-600 h-11 px-4 rounded-xl shadow-md transition-all text-sm font-bold hover:-translate-y-0.5">
+                    <span id="lock-icon">🔒</span>
+                    <span id="lock-label" class="hidden sm:inline">Real Results</span>
+                </button>
+                <button onclick="randomizeAll()" aria-label="Simulate random results" title="Simulate random results" class="bg-white border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-400 text-blue-600 w-11 h-11 rounded-xl shadow-md transition-all flex items-center justify-center text-xl hover:-translate-y-0.5">🎲</button>
+                <button onclick="clearAll()" aria-label="Reset all predictions" title="Reset all predictions" class="bg-white border-2 border-red-200 hover:bg-red-50 hover:border-red-400 text-red-500 w-11 h-11 rounded-xl shadow-md transition-all flex items-center justify-center text-xl hover:-translate-y-0.5">🗑️</button>
+            </div>
+        </header>
+
+        <nav class="flex flex-wrap lg:flex-nowrap justify-center items-center gap-2 mb-10 w-full" id="tabs-container" aria-label="Tournament navigation">
+            {% for letter in groups.keys() %}
+            <button onclick="showTab('{{ letter }}')" id="btn-{{ letter }}" class="tab-btn w-11 h-11 rounded-full font-bold text-base transition-all border-2 flex items-center justify-center {% if loop.first %} border-blue-600 bg-blue-600 text-white shadow-md transform scale-105 {% else %} border-gray-300 bg-white text-gray-500 hover:border-blue-400 shadow-sm hover:bg-blue-50 {% endif %}" data-type="group" aria-label="Group {{ letter }}">
+                {{ letter }}
+            </button>
+            {% endfor %}
+            <button onclick="showTab('thirds')" id="btn-thirds" class="tab-btn px-4 h-11 rounded-full font-bold text-xs sm:text-sm uppercase tracking-wide transition-all border-2 flex items-center justify-center border-gray-300 bg-white text-gray-600 hover:border-blue-400 shadow-sm hover:bg-blue-50 ml-1" data-type="thirds" aria-label="3rd Place Rankings">
+                3rd Places
+            </button>
+            <div class="hidden lg:block w-px h-8 bg-gray-300 mx-1"></div>
+            {% for phase in ['R32', 'R16', 'QF', 'SF', 'TP', 'Final'] %}
+            <button onclick="showTab('{{ phase }}')" id="btn-{{ phase }}" class="tab-btn px-4 h-11 rounded-full font-bold text-xs sm:text-sm uppercase tracking-wide transition-all border-2 flex items-center justify-center border-gray-300 bg-white text-purple-600 hover:border-purple-400 shadow-sm hover:bg-purple-50" data-type="knockout" aria-label="{{ phase }} knockout stage">
+                {{ phase }}
+            </button>
+            {% endfor %}
+        </nav>
+
+        <!-- Loading overlay (shown briefly on initial load) -->
+        <div id="loading-overlay" class="flex flex-col items-center justify-center py-20 gap-4">
+            <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <p class="text-sm text-gray-500 font-medium tracking-wide">Loading tournament data...</p>
+        </div>
+
+        <div id="tournament-content" class="hidden">
+            {% for letter, group in groups.items() %}
+            <div id="tab-{{ letter }}" class="tab-content {% if loop.first %} active {% endif %}">
+                <div class="flex items-center gap-3 mb-6 pl-2">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xl shadow-sm border-2 border-blue-600">{{ letter }}</div>
+                    <h2 class="text-3xl font-bold text-gray-800 tracking-tight">Group {{ letter }}</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div class="bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300 h-fit">
+                        <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-5">
+                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest">Matches</h3>
+                            <div class="flex gap-2">
+                                <button onclick="randomizeGroup('{{ letter }}')" aria-label="Randomize Group {{ letter }}" title="Randomize Group" class="bg-white border border-blue-200 hover:bg-blue-50 hover:border-blue-400 text-blue-500 w-9 h-9 rounded-lg shadow-sm transition-all flex items-center justify-center text-lg hover:-translate-y-0.5">🎲</button>
+                                <button onclick="clearGroup('{{ letter }}')" aria-label="Clear Group {{ letter }}" title="Clear Group" class="bg-white border border-red-200 hover:bg-red-50 hover:border-red-400 text-red-500 w-9 h-9 rounded-lg shadow-sm transition-all flex items-center justify-center text-lg hover:-translate-y-0.5">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="space-y-3" id="matches-{{ letter }}"> 
+                            {% for match in group.matches %}
+                            
+                            {% set is_tbd = ('Winner' in match.team_a.name or 'Winner' in match.team_b.name) %}
+                            {% set disabled_attr = 'disabled title="Select playoff winner first"' if is_tbd else '' %}
+                            {% set opacity_class = 'opacity-60 grayscale' if is_tbd else '' %}
+
+                            <div class="flex flex-col bg-gray-50/80 hover:bg-gray-100 rounded-xl p-3 transition-colors border border-gray-100 hover:border-gray-200 {{ opacity_class }}">
+                                <div class="flex justify-center items-center w-full">
+                                    <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
+                                        <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">{{ match.team_a.name }}</span>
+                                        {% set styleA = '' %}
+                                        {% if match.team_a.iso_code %}
+                                            {% set styleA = "style=\"background-image: url('https://hatscripts.github.io/circle-flags/flags/" ~ match.team_a.iso_code ~ ".svg');\"" %}
+                                        {% endif %}
+                                        <div id="circle_a_{{ match.match_id }}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" {{ styleA | safe }}></div>
+                                    </div> 
+                                    <div class="flex items-center justify-center w-28 sm:w-32 shrink-0"> 
+                                        <div class="flex items-center gap-2 px-2 shrink-0">
+                                            <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('{{ match.match_id }}')" {{ disabled_attr | safe }} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_{{ match.match_id }}">
+                                            <span class="text-gray-400 font-bold text-lg">:</span>
+                                            <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('{{ match.match_id }}')" {{ disabled_attr | safe }} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_{{ match.match_id }}">
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
+                                        {% set styleB = '' %}
+                                        {% if match.team_b.iso_code %}
+                                            {% set styleB = "style=\"background-image: url('https://hatscripts.github.io/circle-flags/flags/" ~ match.team_b.iso_code ~ ".svg');\"" %}
+                                        {% endif %}
+                                        <div id="circle_b_{{ match.match_id }}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" {{ styleB | safe }}></div>
+                                        <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">{{ match.team_b.name }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center mt-3 pt-3 border-t border-gray-200/60">
+                                    <div class="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wider font-medium">
+                                        <span class="whitespace-nowrap">{{ match.date_str }} • {{ match.time_str }}</span>
+                                        <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
+                                        <span class="whitespace-nowrap">{{ match.stadium }}, {{ match.city }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-6 h-full relative" id="right-col-{{ letter }}">
+                        <div id="playoff-container-{{ letter }}" class="hidden w-full transition-all duration-500 ease-in-out"></div>
+                        <div id="standings-container-{{ letter }}" class="w-full bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-500 ease-in-out flex flex-col h-fit">
+                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-3 mb-5">Standings</h3>
+                            <div class="overflow-x-auto flex-1">
+                                <table class="w-full text-sm whitespace-nowrap">
+                                    <thead class="text-gray-500">
+                                        <tr>
+                                            <th class="pb-4 font-semibold w-8 text-center">#</th>
+                                            <th class="pb-4 font-semibold text-left pl-2">Team</th>
+                                            <th class="pb-4 text-center font-bold text-gray-800 w-10">Pts</th>
+                                            <th class="pb-4 text-center font-medium w-8">P</th>
+                                            <th class="pb-4 text-center font-medium w-8">W</th>
+                                            <th class="pb-4 text-center font-medium w-8">D</th>
+                                            <th class="pb-4 text-center font-medium w-8">L</th>
+                                            <th class="pb-4 text-center font-medium w-10">GD</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-{{ letter }}"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div id="tab-thirds" class="tab-content">
+                <div class="max-w-4xl mx-auto bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300">
+                    <div class="flex items-center gap-3 mb-6 pl-2 border-b border-gray-200 pb-4">
+                        <div class="w-10 h-10 rounded-xl bg-green-100 text-green-700 font-bold flex items-center justify-center text-xl shadow-sm border-2 border-green-600">🥉</div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800 tracking-tight">Ranking of 3rd Place Teams</h2>
+                            <p class="text-sm text-gray-500 mt-1">The top 8 third-place teams advance to the Round of 32.</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm whitespace-nowrap">
+                            <thead class="text-gray-500">
+                                <tr>
+                                    <th class="pb-4 font-semibold w-8 text-center">#</th>
+                                    <th class="pb-4 font-semibold w-12 text-center">Group</th>
+                                    <th class="pb-4 font-semibold text-left pl-2">Team</th>
+                                    <th class="pb-4 text-center font-bold text-gray-800 w-12">Pts</th>
+                                    <th class="pb-4 text-center font-medium w-10">P</th>
+                                    <th class="pb-4 text-center font-medium w-12">GD</th>
+                                    <th class="pb-4 text-center font-medium w-12">GF</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-thirds">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% for phase in ['R32', 'R16', 'QF', 'SF', 'TP', 'Final'] %}
+            <div id="tab-{{ phase }}" class="tab-content">
+                <div class="bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300">
+                    <div class="flex items-center gap-3 mb-8 pl-2 border-b border-gray-200 pb-4">
+                        <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xl shadow-sm border-2 border-purple-600">⚔️</div>
+                        <h2 class="text-2xl font-bold text-gray-800 tracking-tight">{% if phase == 'TP' %}Third Place Playoff{% elif phase == 'Final' %}World Cup Final{% else %}Knockout Stage: {{ phase }}{% endif %}</h2>
+                    </div>
+                    <div id="matches-{{ phase }}"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <footer class="mt-16 py-6 border-t border-gray-200/80 text-center">
+        <p class="text-xs text-gray-400">
+            Built with Flask, Jinja2 & Tailwind CSS · Flags by <a href="https://github.com/HatScripts/circle-flags" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-blue-500 transition-colors underline decoration-dotted underline-offset-2">HatScripts/circle-flags</a>
+        </p>
+        <p class="text-[10px] text-gray-300 mt-1">FIFA World Cup 2026™ is a trademark of FIFA. This is an independent fan project.</p>
+    </footer>
+
+    <script>
+        const UI_STYLES = {
+            groupActive: 'tab-btn w-11 h-11 rounded-full font-bold text-base transition-all border-2 flex items-center justify-center border-blue-600 bg-blue-600 text-white shadow-md transform scale-105',
+            groupInactive: 'tab-btn w-11 h-11 rounded-full font-bold text-base transition-all border-2 flex items-center justify-center border-gray-300 bg-white text-gray-500 hover:border-blue-400 shadow-sm hover:bg-blue-50',
+            thirdsActive: 'tab-btn px-4 h-11 rounded-full font-bold text-xs sm:text-sm uppercase tracking-wide transition-all border-2 flex items-center justify-center border-blue-600 bg-blue-600 text-white shadow-md transform scale-105 ml-1',
+            thirdsInactive: 'tab-btn px-4 h-11 rounded-full font-bold text-xs sm:text-sm uppercase tracking-wide transition-all border-2 flex items-center justify-center border-gray-300 bg-white text-gray-600 hover:border-blue-400 shadow-sm hover:bg-blue-50 ml-1',
+            koActive: 'tab-btn px-4 h-11 rounded-full font-bold text-xs sm:text-sm uppercase tracking-wide transition-all border-2 flex items-center justify-center border-purple-600 bg-purple-600 text-white shadow-md transform scale-105',
+            koInactive: 'tab-btn px-4 h-11 rounded-full font-bold text-xs sm:text-sm uppercase tracking-wide transition-all border-2 flex items-center justify-center border-gray-300 bg-white text-purple-600 hover:border-purple-400 shadow-sm hover:bg-purple-50'
+        };
+
+        const BRACKET_LAYOUT = {
+            'R32': { left: ['74', '77', '73', '75', '83', '84', '81', '82'], right: ['76', '78', '79', '80', '86', '88', '85', '87'] },
+            'R16': { left: ['89', '90', '93', '94'], right: ['91', '92', '95', '96'] },
+            'QF':  { left: ['97', '98'], right: ['99', '100'] },
+            'SF':  { left: ['101'], right: ['102'] }
+        };
+
+        // Real Results Locking State
+        let realResultsData = {};
+        let realPlayoffWinnersData = {};
+        let lockEnabled = true;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+            await syncBackend({ scores: savedScores }, true); 
+            // Hide loading, show content
+            document.getElementById('loading-overlay').classList.add('hidden');
+            document.getElementById('tournament-content').classList.remove('hidden');
+        });
+
+        function isMatchLocked(matchId) {
+            return lockEnabled && realResultsData.hasOwnProperty(String(matchId));
+        }
+
+        function toggleLock() {
+            lockEnabled = !lockEnabled;
+            const btn = document.getElementById('lock-toggle');
+            const icon = document.getElementById('lock-icon');
+            const label = document.getElementById('lock-label');
+            if (lockEnabled) {
+                btn.className = 'flex items-center gap-2 bg-emerald-600 text-white border-2 border-emerald-600 h-11 px-4 rounded-xl shadow-md transition-all text-sm font-bold hover:-translate-y-0.5';
+                icon.textContent = '🔒';
+                label.textContent = 'Real Results';
+            } else {
+                btn.className = 'flex items-center gap-2 bg-white text-gray-500 border-2 border-gray-300 h-11 px-4 rounded-xl shadow-md transition-all text-sm font-bold hover:-translate-y-0.5 hover:border-gray-400';
+                icon.textContent = '🔓';
+                label.textContent = 'Unlocked';
+            }
+            // Re-sync to re-render with new lock state
+            const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+            syncBackend({ scores: savedScores }, true);
+        }
+
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = type === 'error' 
+                ? 'bg-red-50 border-red-300 text-red-800' 
+                : 'bg-green-50 border-green-300 text-green-800';
+            const icon = type === 'error' ? '⚠️' : '✓';
+            toast.className = `flex items-center gap-2 px-4 py-3 rounded-xl border shadow-lg text-sm font-medium toast-enter ${colors}`;
+            toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function showTab(groupId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                const type = btn.getAttribute('data-type');
+                if (type === 'knockout') btn.className = UI_STYLES.koInactive;
+                else if (type === 'thirds') btn.className = UI_STYLES.thirdsInactive;
+                else btn.className = UI_STYLES.groupInactive;
+            });
+            document.getElementById(`tab-${groupId}`).classList.add('active');
+            const activeBtn = document.getElementById(`btn-${groupId}`);
+            const activeType = activeBtn.getAttribute('data-type');
+            if (activeType === 'knockout') activeBtn.className = UI_STYLES.koActive;
+            else if (activeType === 'thirds') activeBtn.className = UI_STYLES.thirdsActive;
+            else activeBtn.className = UI_STYLES.groupActive;
+        }
+
+        async function updateMatch(matchId) {
+            if (isMatchLocked(matchId)) return;
+            const inputA = document.getElementById(`a_${matchId}`);
+            const inputB = document.getElementById(`b_${matchId}`);
+            const penA = document.getElementById(`pen_a_${matchId}`);
+            const penB = document.getElementById(`pen_b_${matchId}`);
+            const penContainer = document.getElementById(`penalties_${matchId}`);
+            const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+
+            const valA = inputA ? inputA.value : "";
+            const valB = inputB ? inputB.value : "";
+
+            if (valA !== "" || valB !== "") {
+                const matchData = { a: valA, b: valB };
+                if (valA === valB && valA !== "") {
+                    if (penContainer) {
+                        penContainer.classList.replace('invisible', 'visible');
+                        penContainer.classList.replace('opacity-0', 'opacity-100');
+                    }
+                    if (penA && penA.value !== "") matchData.pen_a = penA.value;
+                    if (penB && penB.value !== "") matchData.pen_b = penB.value;
+                } else {
+                    if (penContainer) {
+                        penContainer.classList.replace('visible', 'invisible');
+                        penContainer.classList.replace('opacity-100', 'opacity-0');
+                    }
+                    if (penA) penA.value = '';
+                    if (penB) penB.value = '';
+                }
+                savedScores[matchId] = matchData;
+            } else {
+                delete savedScores[matchId];
+                if (penContainer) {
+                    penContainer.classList.replace('visible', 'invisible');
+                    penContainer.classList.replace('opacity-100', 'opacity-0');
+                }
+                if (penA) penA.value = '';
+                if (penB) penB.value = '';
+            }
+
+            localStorage.setItem('wc_scores', JSON.stringify(savedScores));
+            updateAllCircles(); 
+            await syncBackend({ scores: savedScores }, false); 
+        }
+
+        async function selectPlayoffWinner(placeholderId, name, iso) {
+            const payload = { 
+                playoff_selection: { id: placeholderId, winner: { name: name, iso: iso } } 
+            };
+            await syncBackend(payload, true); 
+        }
+
+        async function clearGroup(groupId) {
+            const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+            document.querySelectorAll(`#matches-${groupId} input[type="text"]`).forEach(input => {
+                const matchId = input.id.split('_').slice(1).join('_');
+                if (!isMatchLocked(matchId)) {
+                    input.value = "";
+                    delete savedScores[matchId];
+                }
+            });
+            localStorage.setItem('wc_scores', JSON.stringify(savedScores));
+            updateAllCircles(); 
+            await syncBackend({ reset_group: groupId, scores: savedScores }, true);
+        }
+
+        async function randomizeGroup(groupId) {
+            try {
+                const res = await fetch('/api/randomize_group', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ group: groupId, lock_enabled: lockEnabled })
+                });
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const data = await res.json();
+                if (data.status === 'success') renderTournament(data, true);
+            } catch (error) {
+                console.error('Randomize group failed:', error);
+                showToast('Failed to randomize group. Please try again.');
+            }
+        }
+
+        async function clearAll() {
+            const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+            document.querySelectorAll('input[type="text"]').forEach(input => {
+                const matchId = input.id.split('_').slice(1).join('_');
+                if (!isMatchLocked(matchId)) {
+                    input.value = "";
+                    delete savedScores[matchId];
+                }
+            });
+            localStorage.setItem('wc_scores', JSON.stringify(savedScores));
+            updateAllCircles(); 
+            await syncBackend({ reset_all: true, scores: savedScores }, true);
+        }
+
+        async function randomizeAll() {
+            try {
+                const res = await fetch('/api/randomize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lock_enabled: lockEnabled })
+                });
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const data = await res.json();
+                if (data.status === 'success') renderTournament(data, true);
+            } catch (error) {
+                console.error('Randomize failed:', error);
+                showToast('Failed to simulate results. Please try again.');
+            }
+        }
+
+        async function syncBackend(payload, fullRender = false) {
+            try {
+                const fullPayload = { ...payload, lock_enabled: lockEnabled };
+                const res = await fetch('/api/sync', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fullPayload)
+                });
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    if (fullRender && document.startViewTransition) {
+                        document.startViewTransition(() => renderTournament(data, fullRender));
+                    } else {
+                        renderTournament(data, fullRender);
+                    }
+                }
+            } catch (error) {
+                console.error('Sync failed:', error);
+                showToast('Connection error. Your changes are saved locally.');
+            }
+        }
+
+        function generateFlagHtml(isoCode) {
+            if (!isoCode) return '';
+            return `style="background-image: url('https://hatscripts.github.io/circle-flags/flags/${isoCode}.svg');"`;
+        }
+
+        function getCircleClass(g1, g2, p1, p2) {
+            const base = "w-11 h-11 rounded-full shrink-0 transition-all duration-300 ring-2 ring-inset bg-gray-100 bg-cover bg-center shadow-sm overflow-hidden ";
+            if (g1 === "" || g2 === "" || g1 == null || g2 == null) return base + "ring-gray-300"; 
+            const val1 = parseInt(g1, 10), val2 = parseInt(g2, 10);
+            if (val1 > val2) return base + "ring-green-500 z-10"; 
+            if (val1 < val2) return base + "ring-red-500 opacity-90";     
+            if (p1 !== "" && p2 !== "" && p1 != null && p2 != null) {
+                const pen1 = parseInt(p1, 10), pen2 = parseInt(p2, 10);
+                if (pen1 > pen2) return base + "ring-green-500 z-10";
+                if (pen1 < pen2) return base + "ring-red-500 opacity-90";
+            }
+            return base + "ring-gray-400";                           
+        }
+
+        function updateAllCircles() {
+            document.querySelectorAll('input[id^="a_"]').forEach(inputA => {
+                const matchId = inputA.id.replace('a_', '');
+                const inputB = document.getElementById(`b_${matchId}`);
+                const penA = document.getElementById(`pen_a_${matchId}`);
+                const penB = document.getElementById(`pen_b_${matchId}`);
+                const circleA = document.getElementById(`circle_a_${matchId}`);
+                const circleB = document.getElementById(`circle_b_${matchId}`);
+                if (circleA && circleB && inputA && inputB) {
+                    const pA = penA ? penA.value : null;
+                    const pB = penB ? penB.value : null;
+                    circleA.className = getCircleClass(inputA.value, inputB.value, pA, pB);
+                    circleB.className = getCircleClass(inputB.value, inputA.value, pB, pA);
+                }
+            });
+        }
+
+        function renderPlayoffCard(info, letter) {
+            const container = document.getElementById(`playoff-container-${letter}`);
+            const standingsContainer = document.getElementById(`standings-container-${letter}`);
+            
+            if (!container || !standingsContainer) return;
+            
+            container.style.viewTransitionName = `playoff-card-${letter}`;
+            standingsContainer.style.viewTransitionName = `standings-card-${letter}`;
+
+            if (!info) {
+                container.classList.add('hidden');
+                standingsContainer.style.order = 1;
+                return;
+            }
+
+            container.classList.remove('hidden');
+            
+            if (info.selected_iso) {
+                container.style.order = 2;
+                standingsContainer.style.order = 1;
+            } else {
+                container.style.order = 1;
+                standingsContainer.style.order = 2;
+            }
+
+            let matchesBlock = '';
+            if (info.candidates.length === 4) {
+                matchesBlock = `
+                    <div class="flex flex-wrap items-center justify-center gap-1.5 mb-2.5 opacity-90 text-[10px] font-medium text-orange-800 w-full">
+                        <span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${info.matches[0]}</span>
+                        <span class="text-[8px] uppercase font-bold text-orange-500">vs</span>
+                        <span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${info.matches[1]}</span>
+                    </div>
+                `;
+            } else {
+                matchesBlock = `
+                    <div class="flex flex-wrap justify-center gap-2 mb-2.5 opacity-90 text-[10px] font-medium text-orange-800">
+                        ${info.matches.map(m => `<span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${m}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            const gridCols = info.candidates.length === 4 ? 'grid-cols-4' : 'grid-cols-3';
+
+            const isPlayoffLocked = lockEnabled && realPlayoffWinnersData.hasOwnProperty(info.id);
+
+            const candidatesHtml = info.candidates.map(team => {
+                const isSelected = info.selected_iso === team.iso;
+                const activeClass = isSelected 
+                    ? (isPlayoffLocked 
+                        ? 'ring-2 ring-emerald-500 bg-emerald-50 border-emerald-500 shadow-md transform scale-[1.05]'
+                        : 'ring-2 ring-green-500 bg-green-50 border-green-500 shadow-md transform scale-[1.05]')
+                    : 'bg-white border-gray-200 hover:border-orange-300 hover:shadow-sm hover:-translate-y-0.5';
+                const disabledAttr = isPlayoffLocked ? 'disabled' : '';
+                
+                return `
+                    <button onclick="selectPlayoffWinner('${info.id}', '${team.name}', '${team.iso}')" 
+                            ${disabledAttr}
+                            class="flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all duration-200 border shadow-sm w-full h-full ${activeClass} ${isPlayoffLocked && !isSelected ? 'opacity-40' : ''}">
+                        <div class="w-6 h-6 rounded-full bg-cover bg-center ring-1 ring-inset ring-black/10 shrink-0 overflow-hidden" 
+                             style="background-image: url('https://hatscripts.github.io/circle-flags/flags/${team.iso}.svg');"></div>
+                        <span class="text-[9px] sm:text-[10px] font-bold text-gray-800 text-center leading-tight break-words w-full">${team.name}</span>
+                    </button>
+                `;
+            }).join('');
+
+            const lockedBadge = isPlayoffLocked 
+                ? '<span class="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider"><span>🔒</span>Official</span>'
+                : '';
+
+            const borderClass = isPlayoffLocked 
+                ? 'border-emerald-300 bg-emerald-50/40'
+                : (info.selected_iso ? 'border-green-300 bg-green-50/40' : 'border-orange-200');
+            const titleColor = isPlayoffLocked 
+                ? 'text-emerald-800'
+                : (info.selected_iso ? 'text-green-800' : 'text-orange-900');
+            const subtitleColor = isPlayoffLocked 
+                ? 'text-emerald-700'
+                : (info.selected_iso ? 'text-green-700' : 'text-orange-700');
+            const subtitle = isPlayoffLocked 
+                ? 'Official winner (locked)'
+                : (info.selected_iso ? 'Winner selected (Click to change)' : 'Who will qualify for the World Cup?');
+
+            container.innerHTML = `
+                <div class="w-full ${isPlayoffLocked ? 'bg-emerald-50/80' : 'bg-orange-50/80'} p-3 sm:p-4 rounded-xl border ${borderClass} shadow-sm transition-colors duration-300">
+                    <div class="text-center mb-2">
+                        <h3 class="text-sm font-bold ${titleColor} leading-tight">${info.name}</h3>
+                        <p class="text-[9px] ${subtitleColor}">
+                            ${lockedBadge} ${subtitle}
+                        </p>
+                    </div>
+                    ${matchesBlock}
+                    <div class="grid ${gridCols} gap-2 h-full">
+                        ${candidatesHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTournament(data, fullRender) {
+            // Update real results state from the API response
+            if (data.real_results) realResultsData = data.real_results;
+            if (data.real_playoff_winners) realPlayoffWinnersData = data.real_playoff_winners;
+
+            const activeEl = document.activeElement;
+            const activeId = activeEl ? activeEl.id : null;
+            let cursorStart = null, cursorEnd = null;
+            if (activeEl && activeEl.tagName === 'INPUT') {
+                try { cursorStart = activeEl.selectionStart; cursorEnd = activeEl.selectionEnd; } catch(e) {}
+            }
+
+            const currentScores = fullRender ? data.scores : (JSON.parse(localStorage.getItem('wc_scores')) || {});
+            if (fullRender) {
+                // Merge real results into saved scores
+                if (lockEnabled && data.real_results) {
+                    for (const [mid, rr] of Object.entries(data.real_results)) {
+                        currentScores[mid] = rr;
+                    }
+                }
+                localStorage.setItem('wc_scores', JSON.stringify(currentScores));
+            }
+
+            for (const [letter, standings] of Object.entries(data.standings)) {
+                renderTable(letter, standings.teams, data.thirds);
+                renderPlayoffCard(standings.playoff_info, letter);
+                
+                if (fullRender && data.group_matches && data.group_matches[letter]) {
+                    renderGroupMatches(letter, data.group_matches[letter]);
+                }
+            }
+            renderThirdsTable(data.thirds);
+            renderKnockouts(data.knockouts); 
+            
+            // Sync all inputs with current scores
+            document.querySelectorAll('input[id^="a_"]').forEach(inputA => {
+                const matchId = inputA.id.replace('a_', '');
+                const inputB = document.getElementById(`b_${matchId}`);
+                const penContainer = document.getElementById(`penalties_${matchId}`);
+                const pA = document.getElementById(`pen_a_${matchId}`);
+                const pB = document.getElementById(`pen_b_${matchId}`);
+                
+                if (currentScores[matchId]) {
+                    const s = currentScores[matchId];
+                    if (inputA.value !== String(s.a)) inputA.value = s.a;
+                    if (inputB && inputB.value !== String(s.b)) inputB.value = s.b;
+                    
+                    if (String(s.a) !== "" && String(s.a) === String(s.b)) {
+                        if (penContainer) {
+                            penContainer.classList.replace('invisible', 'visible');
+                            penContainer.classList.replace('opacity-0', 'opacity-100');
+                        }
+                        if (pA && s.pen_a !== undefined && pA.value !== String(s.pen_a)) pA.value = s.pen_a;
+                        if (pB && s.pen_b !== undefined && pB.value !== String(s.pen_b)) pB.value = s.pen_b;
+                    } else {
+                        if (penContainer) {
+                            penContainer.classList.replace('visible', 'invisible');
+                            penContainer.classList.replace('opacity-100', 'opacity-0');
+                        }
+                    }
+                } else {
+                    if (inputA.value !== "") inputA.value = "";
+                    if (inputB && inputB.value !== "") inputB.value = "";
+                    if (penContainer) {
+                        penContainer.classList.replace('visible', 'invisible');
+                        penContainer.classList.replace('opacity-100', 'opacity-0');
+                    }
+                    if (pA) pA.value = "";
+                    if (pB) pB.value = "";
+                }
+            });
+
+            updateAllCircles();
+
+            // Restore focus to allow fluid typing
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el) {
+                    el.focus();
+                    try { if (cursorStart !== null) el.setSelectionRange(cursorStart, cursorEnd); } catch(e) {}
+                }
+            }
+        }
+
+        function renderGroupMatches(letter, matches) {
+            const container = document.getElementById(`matches-${letter}`);
+            if (!container) return;
+            container.innerHTML = matches.map(m => createGroupMatchHTML(m)).join('');
+        }
+
+        function createGroupMatchHTML(match) {
+            const isTBD = match.team_a.includes('Winner') || match.team_b.includes('Winner');
+            const locked = isMatchLocked(match.match_id);
+            const disabledAttr = (isTBD || locked) ? 'disabled' : '';
+            const disabledTitle = isTBD ? 'title="Select playoff winner first"' : (locked ? 'title="Official result (locked)"' : '');
+            const opacityClass = isTBD ? 'opacity-60 grayscale' : '';
+            const lockedBg = locked ? 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50/80' : 'bg-gray-50/80 hover:bg-gray-100 border-gray-100 hover:border-gray-200';
+            const inputAttrs = `type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('${match.match_id}')" ${disabledAttr} ${disabledTitle}`;
+            const styleA = generateFlagHtml(match.iso_a);
+            const styleB = generateFlagHtml(match.iso_b);
+            const lockedBadge = locked ? '<span class="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider"><span>🔒</span>Final</span>' : '';
+
+            return `
+                <div class="flex flex-col rounded-xl p-3 transition-colors border ${opacityClass} ${lockedBg}">
+                    <div class="flex justify-center items-center w-full">
+                        <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
+                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
+                            <div id="circle_a_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
+                        </div> 
+                        <div class="flex items-center justify-center w-28 sm:w-32 shrink-0"> 
+                            <div class="flex items-center gap-2 px-2 shrink-0">
+                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_${match.match_id}">
+                                <span class="text-gray-400 font-bold text-lg">:</span>
+                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_${match.match_id}">
+                            </div>
+                        </div>
+                        <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
+                            <div id="circle_b_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
+                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center mt-3 pt-3 border-t border-gray-200/60">
+                        <div class="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wider font-medium">
+                            ${lockedBadge}
+                            <span class="whitespace-nowrap">${match.date_str} • ${match.time_str}</span>
+                            <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
+                            <span class="whitespace-nowrap">${match.stadium}, ${match.city}</span>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderTable(groupId, teams, thirdsData) {
+            const tbody = document.getElementById(`table-${groupId}`);
+            if (!tbody) return;
+            const allThirdsDone = thirdsData && thirdsData.length === 12 && thirdsData.every(t => t.p === 3);
+            const qualified = new Set((thirdsData || []).filter(t => t.is_qualified).map(t => t.name));
+            
+            tbody.innerHTML = teams.map((team, index) => {
+                let bg = index < 2 ? 'bg-green-100' : (index === 3 ? 'bg-red-100' : '');
+                if (index === 2) bg = allThirdsDone ? (qualified.has(team.name) ? 'bg-green-100' : 'bg-red-100') : 'bg-yellow-100'; 
+                
+                const formatGD = team.gd > 0 ? `+${team.gd}` : team.gd;
+                const flagStyle = generateFlagHtml(team.iso_code);
+
+                return `<tr class="border-t border-gray-200 ${bg} transition-colors">
+                    <td class="py-3.5 font-semibold text-gray-500 text-center">${index + 1}</td>
+                    <td class="py-3.5 font-semibold text-lg text-gray-800 pl-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-full bg-gray-100 bg-cover bg-center ring-1 ring-inset ring-black/10 shadow-sm shrink-0 overflow-hidden" ${flagStyle}></div>
+                            <span>${team.name}</span>
+                        </div>
+                    </td>
+                    <td class="py-3.5 text-center font-bold text-xl text-gray-900">${team.pts}</td>
+                    <td class="py-3.5 text-center text-gray-500 text-base">${team.p}</td>
+                    <td class="py-3.5 text-center text-gray-500 text-base">${team.w}</td>
+                    <td class="py-3.5 text-center text-gray-500 text-base">${team.d}</td>
+                    <td class="py-3.5 text-center text-gray-500 text-base">${team.l}</td>
+                    <td class="py-3.5 text-center text-gray-500 font-medium text-base">${formatGD}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderThirdsTable(thirds) {
+            const tbody = document.getElementById('table-thirds');
+            if (!tbody) return;
+            if (!thirds || thirds.length === 0) return tbody.innerHTML = '';
+            
+            tbody.innerHTML = thirds.map((team, index) => {
+                const bg = index < 8 ? 'bg-green-100' : 'bg-red-100';
+                const formatGD = team.gd > 0 ? `+${team.gd}` : team.gd;
+                const flagStyle = generateFlagHtml(team.iso_code);
+
+                return `<tr class="border-t border-gray-200 ${bg} transition-colors">
+                    <td class="py-3.5 font-semibold text-gray-500 text-center">${index + 1}</td>
+                    <td class="py-3.5 font-bold text-blue-600 text-center text-base">${team.group}</td>
+                    <td class="py-3.5 font-semibold text-lg text-gray-800 pl-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-full bg-gray-100 bg-cover bg-center ring-1 ring-inset ring-black/10 shadow-sm shrink-0 overflow-hidden" ${flagStyle}></div>
+                            <span>${team.name}</span>
+                        </div>
+                    </td>
+                    <td class="py-3.5 text-center font-bold text-xl text-gray-900">${team.pts}</td>
+                    <td class="py-3.5 text-center text-gray-500 text-base">${team.p}</td>
+                    <td class="py-3.5 text-center text-gray-500 font-medium text-base">${formatGD}</td>
+                    <td class="py-3.5 text-center text-gray-500 text-base">${team.gf}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function createMatchCardHTML(match) {
+            if (!match) return '';
+            const isTBD = match.team_a.includes('TBD') || match.team_b.includes('TBD');
+            const locked = isMatchLocked(match.match_id);
+            const styleA = generateFlagHtml(match.iso_a);
+            const styleB = generateFlagHtml(match.iso_b);
+            const disabledAttr = (isTBD || locked) ? 'disabled' : '';
+            const disabledTitle = locked ? 'title="Official result (locked)"' : '';
+            const inputAttrs = `type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('${match.match_id}')" ${disabledAttr} ${disabledTitle}`;
+            const lockedBg = locked ? 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50/80' : 'bg-gray-50/80 hover:bg-gray-100 border-gray-100 hover:border-gray-200';
+            const lockedBadge = locked ? '<span class="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider"><span>🔒</span>Final</span>' : '';
+            
+            return `
+                <div class="relative flex flex-col rounded-xl p-3 transition-colors border ${isTBD ? 'opacity-60 grayscale' : ''} ${lockedBg}">
+                    <div class="flex justify-center items-center w-full">
+                        <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
+                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
+                            <div id="circle_a_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
+                        </div>
+                        
+                        <div class="flex flex-col items-center justify-center w-28 sm:w-32 shrink-0 relative">
+                            <div class="flex items-center gap-2 px-2 relative z-10">
+                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_${match.match_id}">
+                                <span class="text-gray-400 font-bold text-lg">:</span>
+                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_${match.match_id}">
+                            </div>
+                            
+                            <div id="penalties_${match.match_id}" class="absolute top-[105%] left-1/2 -translate-x-1/2 flex items-center gap-1.5 invisible opacity-0 transition-all duration-300 z-0">
+                                <input ${inputAttrs} class="w-9 h-9 text-center bg-purple-50/50 border border-purple-200 rounded-md text-base font-bold text-purple-700 focus:ring-1 focus:ring-purple-400 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="pen_a_${match.match_id}">
+                                <div class="flex flex-col items-center justify-center leading-none text-purple-400 w-3">
+                                    <span class="text-[10px] font-bold">P</span>
+                                    <span class="text-sm font-bold -mt-1">-</span>
+                                </div>
+                                <input ${inputAttrs} class="w-9 h-9 text-center bg-purple-50/50 border border-purple-200 rounded-md text-base font-bold text-purple-700 focus:ring-1 focus:ring-purple-400 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="pen_b_${match.match_id}">
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
+                            <div id="circle_b_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
+                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center mt-10 pt-3 border-t border-gray-200/60">
+                        <div class="flex items-center gap-2 text-[11px] sm:text-[12px] text-gray-500 font-mono font-medium tracking-wide mb-1">
+                            ${lockedBadge}
+                            <span class="whitespace-nowrap">${match.date} • ${match.time}</span>
+                            <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
+                            <span class="whitespace-nowrap">${match.stadium}, ${match.city}</span>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function createMatchPairHTML(m1, m2, marginClass, addDivider = false) {
+            let html = `<div class="relative flex flex-col gap-2 ${marginClass}">`; 
+            if (m1) html += createMatchCardHTML(m1);
+            if (m2) html += createMatchCardHTML(m2);
+            if (addDivider) {
+                html += `<div class="absolute left-[15%] right-[15%] -bottom-6 xl:-bottom-8 border-t-2 border-gray-200/80"></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function buildBracketColumn(matchIds, matchDict, phase) {
+            let html = '';
+            for (let i = 0; i < matchIds.length; i += 2) {
+                const m1 = matchDict[matchIds[i]];
+                const m2 = matchIds[i+1] ? matchDict[matchIds[i+1]] : null;
+                
+                let marginClass = 'mb-0';
+                let addDivider = false;
+                
+                if (phase === 'R32') {
+                    if (i === 0 || i === 4) marginClass = 'mb-6 xl:mb-8';      
+                    else if (i === 2) { marginClass = 'mb-12 xl:mb-16'; addDivider = true; }          
+                } else if (phase === 'R16') {
+                    if (i === 0) { marginClass = 'mb-12 xl:mb-16'; addDivider = true; }               
+                }
+
+                if (m1 || m2) html += createMatchPairHTML(m1, m2, marginClass, addDivider);
+            }
+            return html;
+        }
+
+        function renderKnockouts(knockoutsData) {
+            ['R32', 'R16', 'QF', 'SF', 'TP', 'Final'].forEach(phase => {
+                const container = document.getElementById(`matches-${phase}`);
+                if (!container || !knockoutsData[phase]) return;
+                
+                const matchDict = {};
+                knockoutsData[phase].forEach(m => { matchDict[String(m.match_id).replace('KO_', '')] = m; });
+
+                if (BRACKET_LAYOUT[phase]) {
+                    const leftHTML = buildBracketColumn(BRACKET_LAYOUT[phase].left, matchDict, phase);
+                    const rightHTML = buildBracketColumn(BRACKET_LAYOUT[phase].right, matchDict, phase);
+
+                    container.className = "grid grid-cols-1 xl:grid-cols-2 gap-x-16 relative";
+                    container.innerHTML = `
+                        <div class="hidden xl:block absolute top-8 bottom-8 left-1/2 w-px bg-gray-200/80 -translate-x-1/2"></div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 pl-1 text-center xl:text-left">Left Bracket</p>
+                            <div class="flex flex-col">${leftHTML}</div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 pl-1 text-center xl:text-left">Right Bracket</p>
+                            <div class="flex flex-col">${rightHTML}</div>
+                        </div>`;
+                } else {
+                    container.className = "flex flex-col items-center gap-4 max-w-3xl mx-auto w-full";
+                    container.innerHTML = knockoutsData[phase].map(m => `<div class="w-full">${createMatchCardHTML(m)}</div>`).join('');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
