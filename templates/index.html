@@ -39,6 +39,10 @@
                 <p class="text-xs text-gray-400 mt-1 tracking-wide">48 TEAMS · 12 GROUPS · 104 MATCHES</p>
             </div>
             <div class="flex items-center gap-3">
+                <button onclick="toggleLanguage()" id="lang-toggle" class="flex items-center gap-2 bg-white border-2 border-gray-200 hover:border-blue-400 text-gray-700 h-11 px-4 rounded-xl shadow-md transition-all text-sm font-bold hover:-translate-y-0.5" title="Switch Language / Cambiar Idioma">
+                    <span id="lang-flag">🇺🇸</span>
+                    <span id="lang-label">English</span>
+                </button>
                 <button id="lock-toggle" onclick="toggleLock()" aria-label="Toggle real results lock" title="Lock real results" class="flex items-center gap-2 bg-emerald-600 text-white border-2 border-emerald-600 h-11 px-4 rounded-xl shadow-md transition-all text-sm font-bold hover:-translate-y-0.5">
                     <span id="lock-icon">🔒</span>
                     <span id="lock-label" class="hidden sm:inline">Real Results</span>
@@ -227,21 +231,360 @@
             'SF':  { left: ['101'], right: ['102'] }
         };
 
+        // Multi-language Support
+        const TRANSLATIONS = {
+            'es': {
+                // UI Elements
+                'Real Results': 'Resultados Reales',
+                'Groups': 'Grupos',
+                'Playoffs': 'Fase Final',
+                'Best Thirds': 'Mejores 3º',
+                'Randomize All': 'Aleatorio',
+                'Clear All': 'Limpiar',
+                'Winner': 'Ganador',
+                'Who will qualify for the World Cup?': '¿Quién clasificará al Mundial?',
+                'Official winner (locked)': 'Ganador oficial (bloqueado)',
+                'Winner selected (Click to change)': 'Ganador (Clic para cambiar)',
+                'Connection error. Your changes are saved locally.': 'Error de conexión. Cambios guardados localmente.',
+                'Official result (locked)': 'Resultado oficial (bloqueado)',
+                'Select playoff winner first': 'Selecciona ganador de playoff primero',
+                'Official': 'Oficial',
+                'Final': 'Final',
+                'TBD': 'TBD',
+                'Winner': 'Ganador',
+                'Third Place Playoff': 'Tercer Puesto',
+                'World Cup Final': 'Final del Mundial',
+                'Knockout Stage': 'Fase Final',
+                'Knockout Stage: ': 'Fase Final: ',
+                'Group': 'Grupo',
+                'Group ': 'Grupo ',
+                'Team': 'Equipo',
+                'Points': 'Pts',
+                'Played': 'PJ',
+                'W': 'G',
+                'D': 'E',
+                'L': 'P',
+                'GD': 'DG',
+                'GF': 'GF',
+                'P': 'J',
+                'World Cup 2026 Simulator': 'Simulador Mundial 2026',
+                'Left Bracket': 'Llave Izquierda',
+                'Right Bracket': 'Llave Derecha',
+                'Ranking of 3rd Place Teams': 'Clasificación de Mejores Terceros',
+                'The top 8 third-place teams advance to the Round of 32.': 'Los mejores 8 terceros avanzan a 16vos.',
+                '3rd Places': 'Mejores 3º',
+                'Simulator': 'Simulador',
+
+                // Phases
+                'R32': '16vos',
+                'R16': '8vos',
+                'QF': '4tos',
+                'SF': 'Semis',
+                'TP': '3er Puesto',
+                'Final': 'Final',
+
+                // Teams
+                'Mexico': 'México',
+                'South Africa': 'Sudáfrica',
+                'South Korea': 'Corea del Sur',
+                'Canada': 'Canadá',
+                'Switzerland': 'Suiza',
+                'Brazil': 'Brasil',
+                'Morocco': 'Marruecos',
+                'Haiti': 'Haití',
+                'Scotland': 'Escocia',
+                'United States': 'Estados Unidos',
+                'Paraguay': 'Paraguay',
+                'Australia': 'Australia',
+                'Germany': 'Alemania',
+                'Curaçao': 'Curazao',
+                'Côte d\'Ivoire': 'Costa de Marfil',
+                'Ecuador': 'Ecuador',
+                'Netherlands': 'Países Bajos',
+                'Japan': 'Japón',
+                'Tunisia': 'Túnez',
+                'Belgium': 'Bélgica',
+                'Egypt': 'Egipto',
+                'IR Iran': 'Irán',
+                'New Zealand': 'Nueva Zelanda',
+                'Spain': 'España',
+                'Cabo Verde': 'Cabo Verde',
+                'Saudi Arabia': 'Arabia Saudita',
+                'Uruguay': 'Uruguay',
+                'France': 'Francia',
+                'Senegal': 'Senegal',
+                'Norway': 'Noruega',
+                'Argentina': 'Argentina',
+                'Algeria': 'Argelia',
+                'Austria': 'Austria',
+                'Jordan': 'Jordania',
+                'Portugal': 'Portugal',
+                'Uzbekistan': 'Uzbekistán',
+                'Colombia': 'Colombia',
+                'England': 'Inglaterra',
+                'Croatia': 'Croacia',
+                'Ghana': 'Ghana',
+                'Panama': 'Panamá',
+
+                // Playoff Teams
+                'Italy': 'Italia',
+                'Northern Ireland': 'Irlanda del Norte',
+                'Wales': 'Gales',
+                'Bosnia & Herz.': 'Bosnia y Herz.',
+                'Ukraine': 'Ucrania',
+                'Sweden': 'Suecia',
+                'Poland': 'Polonia',
+                'Albania': 'Albania',
+                'Turkey': 'Turquía',
+                'Romania': 'Rumania',
+                'Slovakia': 'Eslovaquia',
+                'Kosovo': 'Kosovo',
+                'Denmark': 'Dinamarca',
+                'North Macedonia': 'Macedonia del Norte',
+                'Czechia': 'Chequia',
+                'Ireland': 'Irlanda',
+                'DR Congo': 'RD Congo',
+                'Jamaica': 'Jamaica',
+                'New Caledonia': 'Nueva Caledonia',
+                'Iraq': 'Irak',
+                'Bolivia': 'Bolivia',
+                'Suriname': 'Surinam',
+                'N. Ireland': 'Irlanda del Norte',
+                'N. Macedonia': 'Macedonia del Norte',
+                'Bosnia': 'Bosnia',
+                'Bosnia & Herz.': 'Bosnia y Herz.',
+
+                // Playoff Names
+                'UEFA Path A': 'UEFA Playoff A',
+                'UEFA Path B': 'UEFA Playoff B',
+                'UEFA Path C': 'UEFA Playoff C',
+                'UEFA Path D': 'UEFA Playoff D',
+                'FIFA Play-off 1': 'FIFA Playoff 1',
+                'FIFA Play-off 2': 'FIFA Playoff 2',
+
+                // Playoff Placeholders
+                'Winner UEFA Playoff A': 'Ganador UEFA Playoff A',
+                'Winner UEFA Playoff B': 'Ganador UEFA Playoff B',
+                'Winner UEFA Playoff C': 'Ganador UEFA Playoff C',
+                'Winner UEFA Playoff D': 'Ganador UEFA Playoff D',
+                'Winner FIFA Playoff 1': 'Ganador FIFA Playoff 1',
+                'Winner FIFA Playoff 2': 'Ganador FIFA Playoff 2',
+
+                // Cities & Countries
+                'USA': 'EE.UU.',
+                'Mexico City': 'CDMX',
+                'New York/New Jersey': 'NY/NJ',
+                'San Francisco Bay Area': 'Bahía SF',
+
+                // Stadiums (Common ones)
+                'Mercedes-Benz Stadium': 'Estadio Mercedes-Benz',
+                'Gillette Stadium': 'Estadio Gillette',
+                'AT&T Stadium': 'Estadio AT&T',
+                'NRG Stadium': 'Estadio NRG',
+                'Arrowhead Stadium': 'Estadio Arrowhead',
+                'SoFi Stadium': 'Estadio SoFi',
+                'Hard Rock Stadium': 'Estadio Hard Rock',
+                'MetLife Stadium': 'Estadio MetLife',
+                'Lincoln Financial Field': 'Estadio Lincoln Financial',
+                'Levi\'s Stadium': 'Estadio Levi\'s',
+                'Lumen Field': 'Lumen Field',
+                'BMO Field': 'BMO Field',
+                'BC Place': 'BC Place',
+                'Estadio Akron': 'Estadio Akron',
+                'Estadio Azteca': 'Estadio Azteca',
+                'Estadio BBVA': 'Estadio BBVA',
+                
+                // Extra UI
+                'Matches': 'Partidos',
+                'Standings': 'Posiciones',
+                'Left Bracket': 'Llave Izquierda',
+                'Right Bracket': 'Llave Derecha',
+                'Spanish': 'Español',
+                'English': 'Inglés'
+            }
+        };
+
+        let currentLanguage = localStorage.getItem('wc_lang') || 'en';
+
+        function t(text) {
+            if (!text) return "";
+            const cleanText = String(text).trim();
+            if (currentLanguage === 'en') return cleanText;
+            if (!TRANSLATIONS[currentLanguage]) return cleanText;
+            
+            // Handle "Group A" style strings
+            if (cleanText.startsWith('Group ')) {
+                const letter = cleanText.split(' ')[1];
+                return t('Group') + ' ' + letter;
+            }
+            if (cleanText.startsWith('Knockout Stage: ')) {
+                const phase = cleanText.split(': ')[1];
+                return t('Knockout Stage') + ': ' + t(phase);
+            }
+            
+            // Handle "TBD (Winner 1)" or "TBD (A1)"
+            if (cleanText.startsWith('TBD (')) {
+                const inner = cleanText.substring(5, cleanText.length - 1);
+                return `TBD (${t(inner)})`;
+            }
+
+            // Handle "Winner 73" style strings
+            if (cleanText.startsWith('Winner ')) {
+                const parts = cleanText.split(' ');
+                if (parts.length === 2 && !isNaN(parts[1])) {
+                    return t('Winner') + ' ' + parts[1];
+                }
+            }
+
+            // Handle "Team A vs Team B" style strings
+            if (cleanText.includes(' vs ')) {
+                const parts = cleanText.split(' vs ');
+                return t(parts[0].trim()) + ' vs ' + t(parts[1].trim());
+            }
+
+            return TRANSLATIONS[currentLanguage][cleanText] || cleanText;
+        }
+
+        function showContent() {
+            const overlay = document.getElementById('loading-overlay');
+            const content = document.getElementById('tournament-content');
+            if (overlay) overlay.classList.add('hidden');
+            if (content) content.classList.remove('hidden');
+        }
+
+        function translateStaticUI() {
+            // Update page title
+            document.title = t('World Cup 2026 Simulator');
+
+            // Update labels - show TARGET language
+            const langLabel = document.getElementById('lang-label');
+            const langFlag = document.getElementById('lang-flag');
+            if (currentLanguage === 'es') {
+                langLabel.textContent = 'English';
+                langFlag.textContent = '🇺🇸';
+            } else {
+                langLabel.textContent = 'Español';
+                langFlag.textContent = '🇪🇸';
+            }
+
+            document.getElementById('lock-label').textContent = t('Real Results');
+            
+            // Header
+            const h1 = document.querySelector('header h1');
+            if (h1) {
+                h1.innerHTML = `🏆 World Cup 2026 <span class="font-bold">${t('Simulator')}</span>`;
+            }
+            const headerDesc = document.querySelector('header p');
+            if (headerDesc && currentLanguage === 'es') {
+                headerDesc.textContent = '48 EQUIPOS · 12 GRUPOS · 104 PARTIDOS';
+            } else if (headerDesc) {
+                headerDesc.textContent = '48 TEAMS · 12 GROUPS · 104 MATCHES';
+            }
+
+            // Nav
+            const thirdsBtn = document.getElementById('btn-thirds');
+            if (thirdsBtn) thirdsBtn.textContent = t('Best Thirds');
+
+            // Translate Group Nav Buttons and Titles
+            document.querySelectorAll('.tab-btn[data-type="group"]').forEach(btn => {
+                const letter = btn.id.replace('btn-', '');
+                btn.setAttribute('aria-label', t('Group') + ' ' + letter);
+            });
+
+            document.querySelectorAll('.tab-content h2').forEach(h2 => {
+                const txt = h2.textContent.trim();
+                if (txt.startsWith('Group ')) {
+                    h2.textContent = t(txt);
+                } else if (txt.startsWith('Knockout Stage: ')) {
+                    h2.textContent = t(txt);
+                } else if (txt === 'Ranking of 3rd Place Teams') {
+                    h2.textContent = t(txt);
+                } else if (txt === 'Third Place Playoff' || txt === 'World Cup Final') {
+                    h2.textContent = t(txt);
+                }
+            });
+
+            document.querySelectorAll('.tab-content h3, .tab-content p').forEach(el => {
+                const txt = el.textContent.trim();
+                if (txt === 'Matches') el.textContent = t('Matches');
+                if (txt === 'Standings') el.textContent = t('Standings');
+                if (txt === 'Who will qualify for the World Cup?') el.textContent = t(txt);
+            });
+
+            // Thirds Page Desc
+            const thirdsDesc = document.querySelector('#tab-thirds p');
+            if (thirdsDesc) thirdsDesc.textContent = t('The top 8 third-place teams advance to the Round of 32.');
+
+            // Table Headers
+            const headerMap = {
+                'Pts': 'Pts', 'P': 'J', 'W': 'G', 'D': 'E', 'L': 'P', 'GD': 'DG', 'GF': 'GF', 'Team': 'Equipo', 'Group': 'Grupo'
+            };
+            document.querySelectorAll('th').forEach(th => {
+                const txt = th.textContent.trim();
+                if (headerMap[txt]) {
+                    th.textContent = t(txt);
+                }
+            });
+
+            // Translate team names in static tables (fallback)
+            document.querySelectorAll('td span').forEach(span => {
+                const txt = span.textContent.trim();
+                const translated = t(txt);
+                if (translated !== txt) span.textContent = translated;
+            });
+
+            const koTabs = ['btn-R32', 'btn-R16', 'btn-QF', 'btn-SF', 'btn-TP', 'btn-Final'];
+            koTabs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const phase = id.replace('btn-', '');
+                    el.textContent = t(phase);
+                }
+            });
+
+            // Footer
+            const footerText = document.querySelector('footer p');
+            if (footerText && currentLanguage === 'es') {
+                footerText.textContent = 'FIFA World Cup 2026™ es una marca registrada de FIFA. Este es un proyecto independiente de fans.';
+            } else if (footerText) {
+                footerText.textContent = 'FIFA World Cup 2026™ is a trademark of FIFA. This is an independent fan project.';
+            }
+        }
+
+        async function toggleLanguage() {
+            currentLanguage = currentLanguage === 'en' ? 'es' : 'en';
+            localStorage.setItem('wc_lang', currentLanguage);
+            
+            translateStaticUI();
+            
+            // We need to re-render the dynamic parts
+            // We'll use the existing data if available
+            if (lastTournamentData) {
+                renderTournament(lastTournamentData, true);
+            } else {
+                location.reload();
+            }
+        }
+
         // Real Results Locking State
         let realResultsData = {};
         let realPlayoffWinnersData = {};
         let lockEnabled = true;
+        let lastTournamentData = null; // Store last data for re-rendering
 
         // Sync debouncing & abort control to prevent race conditions
         let syncAbortController = null;
         let updateMatchTimer = null;
 
         document.addEventListener("DOMContentLoaded", async () => {
+            translateStaticUI();
             const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
-            await syncBackend({ scores: savedScores }, true); 
-            // Hide loading, show content
-            document.getElementById('loading-overlay').classList.add('hidden');
-            document.getElementById('tournament-content').classList.remove('hidden');
+            try {
+                await syncBackend({ scores: savedScores }, true); 
+            } catch (e) {
+                console.error("Initial sync failed", e);
+                showContent(); // still show content even if failed
+            }
         });
 
         function isMatchLocked(matchId) {
@@ -454,6 +797,7 @@
                 const data = await res.json();
                 
                 if (data.status === 'success') {
+                    lastTournamentData = data; // Store for language switching
                     if (fullRender && document.startViewTransition) {
                         document.startViewTransition(() => renderTournament(data, fullRender));
                     } else {
@@ -532,15 +876,15 @@
             if (info.candidates.length === 4) {
                 matchesBlock = `
                     <div class="flex flex-wrap items-center justify-center gap-1.5 mb-2.5 opacity-90 text-[10px] font-medium text-orange-800 w-full">
-                        <span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${info.matches[0]}</span>
+                        <span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${t(info.matches[0])}</span>
                         <span class="text-[8px] uppercase font-bold text-orange-500">vs</span>
-                        <span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${info.matches[1]}</span>
+                        <span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${t(info.matches[1])}</span>
                     </div>
                 `;
             } else {
                 matchesBlock = `
                     <div class="flex flex-wrap justify-center gap-2 mb-2.5 opacity-90 text-[10px] font-medium text-orange-800">
-                        ${info.matches.map(m => `<span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${m}</span>`).join('')}
+                        ${info.matches.map(m => `<span class="bg-orange-100/80 px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">${t(m)}</span>`).join('')}
                     </div>
                 `;
             }
@@ -564,7 +908,7 @@
                             class="flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all duration-200 border shadow-sm w-full h-full ${activeClass} ${isPlayoffLocked && !isSelected ? 'opacity-40' : ''}">
                         <div class="w-6 h-6 rounded-full bg-cover bg-center ring-1 ring-inset ring-black/10 shrink-0 overflow-hidden" 
                              style="background-image: url('https://hatscripts.github.io/circle-flags/flags/${team.iso}.svg');"></div>
-                        <span class="text-[9px] sm:text-[10px] font-bold text-gray-800 text-center leading-tight break-words w-full">${team.name}</span>
+                        <span class="text-[9px] sm:text-[10px] font-bold text-gray-800 text-center leading-tight break-words w-full">${t(team.name)}</span>
                     </button>
                 `;
             }).join('');
@@ -583,13 +927,13 @@
                 ? 'text-emerald-700'
                 : (info.selected_iso ? 'text-green-700' : 'text-orange-700');
             const subtitle = isPlayoffLocked 
-                ? 'Official winner (locked)'
-                : (info.selected_iso ? 'Winner selected (Click to change)' : 'Who will qualify for the World Cup?');
+                ? t('Official winner (locked)')
+                : (info.selected_iso ? t('Winner selected (Click to change)') : t('Who will qualify for the World Cup?'));
 
             container.innerHTML = `
                 <div class="w-full ${isPlayoffLocked ? 'bg-emerald-50/80' : 'bg-orange-50/80'} p-3 sm:p-4 rounded-xl border ${borderClass} shadow-sm transition-colors duration-300">
                     <div class="text-center mb-2">
-                        <h3 class="text-sm font-bold ${titleColor} leading-tight">${info.name}</h3>
+                        <h3 class="text-sm font-bold ${titleColor} leading-tight">${t(info.name)}</h3>
                         <p class="text-[9px] ${subtitleColor}">
                             ${lockedBadge} ${subtitle}
                         </p>
@@ -603,6 +947,9 @@
         }
 
         function renderTournament(data, fullRender) {
+            // Ensure UI is visible now that we are rendering
+            showContent();
+            
             // Update real results state from the API response
             if (data.real_results) realResultsData = data.real_results;
             if (data.real_playoff_winners) realPlayoffWinnersData = data.real_playoff_winners;
@@ -719,7 +1066,7 @@
                 <div class="flex flex-col rounded-xl p-3 transition-colors border ${opacityClass} ${lockedBg}">
                     <div class="flex justify-center items-center w-full">
                         <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
-                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${t(match.team_a)}</span>
                             <div id="circle_a_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
                         </div> 
                         <div class="match-score-container flex items-center justify-center w-28 sm:w-32 shrink-0"> 
@@ -731,7 +1078,7 @@
                         </div>
                         <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
                             <div id="circle_b_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
-                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${t(match.team_b)}</span>
                         </div>
                     </div>
                     <div class="flex flex-col items-center mt-3 pt-3 border-t border-gray-200/60">
@@ -739,7 +1086,7 @@
                             ${lockedBadge}
                             <span class="whitespace-nowrap">${match.date_str} • ${match.time_str}</span>
                             <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
-                            <span class="whitespace-nowrap">${match.stadium}, ${match.city}</span>
+                            <span class="whitespace-nowrap">${t(match.stadium)}, ${t(match.city)}</span>
                         </div>
                     </div>
                 </div>`;
@@ -763,7 +1110,7 @@
                     <td class="py-3.5 font-semibold text-lg text-gray-800 pl-2">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-full bg-gray-100 bg-cover bg-center ring-1 ring-inset ring-black/10 shadow-sm shrink-0 overflow-hidden" ${flagStyle}></div>
-                            <span>${team.name}</span>
+                            <span>${t(team.name)}</span>
                         </div>
                     </td>
                     <td class="py-3.5 text-center font-bold text-xl text-gray-900">${team.pts}</td>
@@ -792,7 +1139,7 @@
                     <td class="py-3.5 font-semibold text-lg text-gray-800 pl-2">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-full bg-gray-100 bg-cover bg-center ring-1 ring-inset ring-black/10 shadow-sm shrink-0 overflow-hidden" ${flagStyle}></div>
-                            <span>${team.name}</span>
+                            <span>${t(team.name)}</span>
                         </div>
                     </td>
                     <td class="py-3.5 text-center font-bold text-xl text-gray-900">${team.pts}</td>
@@ -819,7 +1166,7 @@
                 <div class="relative flex flex-col rounded-xl p-3 transition-colors border ${isTBD ? 'opacity-60 grayscale' : ''} ${lockedBg}">
                     <div class="flex justify-center items-center w-full">
                         <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
-                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${t(match.team_a)}</span>
                             <div id="circle_a_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
                         </div>
                         
@@ -842,7 +1189,7 @@
 
                         <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
                             <div id="circle_b_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
-                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${t(match.team_b)}</span>
                         </div>
                     </div>
                     <div class="flex flex-col items-center mt-10 pt-3 border-t border-gray-200/60">
@@ -850,7 +1197,7 @@
                             ${lockedBadge}
                             <span class="whitespace-nowrap">${match.date} • ${match.time}</span>
                             <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
-                            <span class="whitespace-nowrap">${match.stadium}, ${match.city}</span>
+                            <span class="whitespace-nowrap">${t(match.stadium)}, ${t(match.city)}</span>
                         </div>
                     </div>
                 </div>`;
@@ -904,11 +1251,11 @@
                     container.innerHTML = `
                         <div class="hidden xl:block absolute top-8 bottom-8 left-1/2 w-px bg-gray-200/80 -translate-x-1/2"></div>
                         <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 pl-1 text-center xl:text-left">Left Bracket</p>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 pl-1 text-center xl:text-left">${t('Left Bracket')}</p>
                             <div class="flex flex-col">${leftHTML}</div>
                         </div>
                         <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 pl-1 text-center xl:text-left">Right Bracket</p>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 pl-1 text-center xl:text-left">${t('Right Bracket')}</p>
                             <div class="flex flex-col">${rightHTML}</div>
                         </div>`;
                 } else {
