@@ -30,3 +30,5 @@ Thumbs.db
 
 # Tailwind
 node_modules/
+package.json
+package-lock.json

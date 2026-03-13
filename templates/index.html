@@ -80,7 +80,7 @@
                 </div>
                 
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    <div class="bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300 h-fit">
+                    <div class="bg-white p-3 sm:p-5 md:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300 h-fit">
                         <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-5">
                             <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest">Matches</h3>
                             <div class="flex gap-2">
@@ -98,18 +98,18 @@
                             <div class="flex flex-col bg-gray-50/80 hover:bg-gray-100 rounded-xl p-3 transition-colors border border-gray-100 hover:border-gray-200 {{ opacity_class }}">
                                 <div class="flex justify-center items-center w-full">
                                     <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
-                                        <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">{{ match.team_a.name }}</span>
+                                        <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">{{ match.team_a.name }}</span>
                                         {% set styleA = '' %}
                                         {% if match.team_a.iso_code %}
                                             {% set styleA = "style=\"background-image: url('https://hatscripts.github.io/circle-flags/flags/" ~ match.team_a.iso_code ~ ".svg');\"" %}
                                         {% endif %}
-                                        <div id="circle_a_{{ match.match_id }}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" {{ styleA | safe }}></div>
+                                        <div id="circle_a_{{ match.match_id }}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" {{ styleA | safe }}></div>
                                     </div> 
-                                    <div class="flex items-center justify-center w-28 sm:w-32 shrink-0"> 
+                                    <div class="match-score-container flex items-center justify-center w-28 sm:w-32 shrink-0"> 
                                         <div class="flex items-center gap-2 px-2 shrink-0">
-                                            <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('{{ match.match_id }}')" {{ disabled_attr | safe }} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_{{ match.match_id }}">
+                                            <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('{{ match.match_id }}')" {{ disabled_attr | safe }} class="match-score-input w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_{{ match.match_id }}">
                                             <span class="text-gray-400 font-bold text-lg">:</span>
-                                            <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('{{ match.match_id }}')" {{ disabled_attr | safe }} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_{{ match.match_id }}">
+                                            <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateMatch('{{ match.match_id }}')" {{ disabled_attr | safe }} class="match-score-input w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_{{ match.match_id }}">
                                         </div>
                                     </div>
                                     <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
@@ -117,12 +117,12 @@
                                         {% if match.team_b.iso_code %}
                                             {% set styleB = "style=\"background-image: url('https://hatscripts.github.io/circle-flags/flags/" ~ match.team_b.iso_code ~ ".svg');\"" %}
                                         {% endif %}
-                                        <div id="circle_b_{{ match.match_id }}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" {{ styleB | safe }}></div>
-                                        <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">{{ match.team_b.name }}</span>
+                                        <div id="circle_b_{{ match.match_id }}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" {{ styleB | safe }}></div>
+                                        <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">{{ match.team_b.name }}</span>
                                     </div>
                                 </div>
                                 <div class="flex flex-col items-center mt-3 pt-3 border-t border-gray-200/60">
-                                    <div class="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wider font-medium">
+                                    <div class="match-venue-info flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wider font-medium">
                                         <span class="whitespace-nowrap">{{ match.date_str }} • {{ match.time_str }}</span>
                                         <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
                                         <span class="whitespace-nowrap">{{ match.stadium }}, {{ match.city }}</span>
@@ -135,7 +135,7 @@
 
                     <div class="flex flex-col gap-6 h-full relative" id="right-col-{{ letter }}">
                         <div id="playoff-container-{{ letter }}" class="hidden w-full transition-all duration-500 ease-in-out"></div>
-                        <div id="standings-container-{{ letter }}" class="w-full bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-500 ease-in-out flex flex-col h-fit">
+                        <div id="standings-container-{{ letter }}" class="w-full bg-white p-3 sm:p-5 md:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-500 ease-in-out flex flex-col h-fit">
                             <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-3 mb-5">Standings</h3>
                             <div class="overflow-x-auto flex-1">
                                 <table class="w-full text-sm whitespace-nowrap">
@@ -161,7 +161,7 @@
             {% endfor %}
 
             <div id="tab-thirds" class="tab-content">
-                <div class="max-w-4xl mx-auto bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300">
+                <div class="max-w-4xl mx-auto bg-white p-3 sm:p-5 md:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300">
                     <div class="flex items-center gap-3 mb-6 pl-2 border-b border-gray-200 pb-4">
                         <div class="w-10 h-10 rounded-xl bg-green-100 text-green-700 font-bold flex items-center justify-center text-xl shadow-sm border-2 border-green-600">🥉</div>
                         <div>
@@ -191,7 +191,7 @@
 
             {% for phase in ['R32', 'R16', 'QF', 'SF', 'TP', 'Final'] %}
             <div id="tab-{{ phase }}" class="tab-content">
-                <div class="bg-white p-5 sm:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300">
+                <div class="bg-white p-3 sm:p-5 md:p-7 rounded-2xl border-2 border-gray-200 card-shadow card-hover transition-all duration-300">
                     <div class="flex items-center gap-3 mb-8 pl-2 border-b border-gray-200 pb-4">
                         <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xl shadow-sm border-2 border-purple-600">⚔️</div>
                         <h2 class="text-2xl font-bold text-gray-800 tracking-tight">{% if phase == 'TP' %}Third Place Playoff{% elif phase == 'Final' %}World Cup Final{% else %}Knockout Stage: {{ phase }}{% endif %}</h2>
@@ -692,23 +692,23 @@
                 <div class="flex flex-col rounded-xl p-3 transition-colors border ${opacityClass} ${lockedBg}">
                     <div class="flex justify-center items-center w-full">
                         <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
-                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
-                            <div id="circle_a_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
+                            <div id="circle_a_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
                         </div> 
-                        <div class="flex items-center justify-center w-28 sm:w-32 shrink-0"> 
+                        <div class="match-score-container flex items-center justify-center w-28 sm:w-32 shrink-0"> 
                             <div class="flex items-center gap-2 px-2 shrink-0">
-                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_${match.match_id}">
+                                <input ${inputAttrs} class="match-score-input w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_${match.match_id}">
                                 <span class="text-gray-400 font-bold text-lg">:</span>
-                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_${match.match_id}">
+                                <input ${inputAttrs} class="match-score-input w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_${match.match_id}">
                             </div>
                         </div>
                         <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
-                            <div id="circle_b_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
-                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
+                            <div id="circle_b_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
                         </div>
                     </div>
                     <div class="flex flex-col items-center mt-3 pt-3 border-t border-gray-200/60">
-                        <div class="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wider font-medium">
+                        <div class="match-venue-info flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wider font-medium">
                             ${lockedBadge}
                             <span class="whitespace-nowrap">${match.date_str} • ${match.time_str}</span>
                             <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
@@ -792,15 +792,15 @@
                 <div class="relative flex flex-col rounded-xl p-3 transition-colors border ${isTBD ? 'opacity-60 grayscale' : ''} ${lockedBg}">
                     <div class="flex justify-center items-center w-full">
                         <div class="flex-1 flex justify-end items-center gap-2 sm:gap-3 w-0">
-                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
-                            <div id="circle_a_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-right leading-tight break-words">${match.team_a}</span>
+                            <div id="circle_a_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleA}></div>
                         </div>
                         
-                        <div class="flex flex-col items-center justify-center w-28 sm:w-32 shrink-0 relative">
+                        <div class="match-score-container flex flex-col items-center justify-center w-28 sm:w-32 shrink-0 relative">
                             <div class="flex items-center gap-2 px-2 relative z-10">
-                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_${match.match_id}">
+                                <input ${inputAttrs} class="match-score-input w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="a_${match.match_id}">
                                 <span class="text-gray-400 font-bold text-lg">:</span>
-                                <input ${inputAttrs} class="w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_${match.match_id}">
+                                <input ${inputAttrs} class="match-score-input w-11 h-11 text-center bg-white border border-gray-300 rounded-lg text-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="b_${match.match_id}">
                             </div>
                             
                             <div id="penalties_${match.match_id}" class="absolute top-[105%] left-1/2 -translate-x-1/2 flex items-center gap-1.5 invisible opacity-0 transition-all duration-300 z-0">
@@ -814,12 +814,12 @@
                         </div>
 
                         <div class="flex-1 flex justify-start items-center gap-2 sm:gap-3 w-0">
-                            <div id="circle_b_${match.match_id}" class="w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
-                            <span class="font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
+                            <div id="circle_b_${match.match_id}" class="match-flag w-11 h-11 rounded-full shrink-0 ring-2 ring-inset ring-gray-300 shadow-sm transition-all duration-300 bg-gray-100 bg-cover bg-center overflow-hidden" ${styleB}></div>
+                            <span class="match-team-name font-semibold text-sm sm:text-base lg:text-lg text-gray-700 text-left leading-tight break-words">${match.team_b}</span>
                         </div>
                     </div>
                     <div class="flex flex-col items-center mt-10 pt-3 border-t border-gray-200/60">
-                        <div class="flex items-center gap-2 text-[11px] sm:text-[12px] text-gray-500 font-mono font-medium tracking-wide mb-1">
+                        <div class="match-venue-info flex items-center gap-2 text-[11px] sm:text-[12px] text-gray-500 font-mono font-medium tracking-wide mb-1">
                             ${lockedBadge}
                             <span class="whitespace-nowrap">${match.date} • ${match.time}</span>
                             <span class="w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
