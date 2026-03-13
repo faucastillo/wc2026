@@ -356,8 +356,16 @@
         }
 
         async function selectPlayoffWinner(placeholderId, name, iso) {
+            // Save to localStorage for per-user isolation
+            const playoffSelections = JSON.parse(localStorage.getItem('wc_playoffs')) || {};
+            playoffSelections[placeholderId] = { name: name, iso: iso };
+            localStorage.setItem('wc_playoffs', JSON.stringify(playoffSelections));
+
+            const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
             const payload = { 
-                playoff_selection: { id: placeholderId, winner: { name: name, iso: iso } } 
+                scores: savedScores,
+                playoff_selection: { id: placeholderId, winner: { name: name, iso: iso } },
+                playoff_selections: playoffSelections
             };
             await syncBackend(payload, true); 
         }
@@ -373,7 +381,8 @@
             });
             localStorage.setItem('wc_scores', JSON.stringify(savedScores));
             updateAllCircles(); 
-            await syncBackend({ reset_group: groupId, scores: savedScores }, true);
+            const playoffSelections = JSON.parse(localStorage.getItem('wc_playoffs')) || {};
+            await syncBackend({ scores: savedScores, playoff_selections: playoffSelections }, true);
         }
 
         async function randomizeGroup(groupId) {
@@ -401,9 +410,11 @@
                     delete savedScores[matchId];
                 }
             });
+            // Clear playoff selections too
+            localStorage.setItem('wc_playoffs', '{}');
             localStorage.setItem('wc_scores', JSON.stringify(savedScores));
             updateAllCircles(); 
-            await syncBackend({ reset_all: true, scores: savedScores }, true);
+            await syncBackend({ scores: savedScores, playoff_selections: {} }, true);
         }
 
         async function randomizeAll() {
@@ -428,7 +439,13 @@
             syncAbortController = new AbortController();
             const { signal } = syncAbortController;
             try {
-                const fullPayload = { ...payload, lock_enabled: lockEnabled };
+                // Always include playoff selections for per-user isolation
+                const playoffSelections = JSON.parse(localStorage.getItem('wc_playoffs')) || {};
+                const fullPayload = { 
+                    ...payload, 
+                    lock_enabled: lockEnabled,
+                    playoff_selections: payload.playoff_selections || playoffSelections
+                };
                 const res = await fetch('/api/sync', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fullPayload),
                     signal
@@ -589,6 +606,16 @@
             // Update real results state from the API response
             if (data.real_results) realResultsData = data.real_results;
             if (data.real_playoff_winners) realPlayoffWinnersData = data.real_playoff_winners;
+
+            // Persist playoff winners to localStorage for per-user isolation
+            // (important after randomize which creates winners server-side)
+            if (data.playoff_winners && Object.keys(data.playoff_winners).length > 0) {
+                const storedPlayoffs = JSON.parse(localStorage.getItem('wc_playoffs')) || {};
+                for (const [pid, winner] of Object.entries(data.playoff_winners)) {
+                    storedPlayoffs[pid] = winner;
+                }
+                localStorage.setItem('wc_playoffs', JSON.stringify(storedPlayoffs));
+            }
 
             const activeEl = document.activeElement;
             const activeId = activeEl ? activeEl.id : null;
@@ -804,12 +831,12 @@
                             </div>
                             
                             <div id="penalties_${match.match_id}" class="absolute top-[105%] left-1/2 -translate-x-1/2 flex items-center gap-1.5 invisible opacity-0 transition-all duration-300 z-0">
-                                <input ${inputAttrs} class="w-9 h-9 text-center bg-purple-50/50 border border-purple-200 rounded-md text-base font-bold text-purple-700 focus:ring-1 focus:ring-purple-400 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="pen_a_${match.match_id}">
+                                <input ${inputAttrs} class="match-score-input w-9 h-9 text-center bg-purple-50/50 border border-purple-200 rounded-md text-base font-bold text-purple-700 focus:ring-1 focus:ring-purple-400 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="pen_a_${match.match_id}">
                                 <div class="flex flex-col items-center justify-center leading-none text-purple-400 w-3">
                                     <span class="text-[10px] font-bold">P</span>
                                     <span class="text-sm font-bold -mt-1">-</span>
                                 </div>
-                                <input ${inputAttrs} class="w-9 h-9 text-center bg-purple-50/50 border border-purple-200 rounded-md text-base font-bold text-purple-700 focus:ring-1 focus:ring-purple-400 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="pen_b_${match.match_id}">
+                                <input ${inputAttrs} class="match-score-input w-9 h-9 text-center bg-purple-50/50 border border-purple-200 rounded-md text-base font-bold text-purple-700 focus:ring-1 focus:ring-purple-400 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" id="pen_b_${match.match_id}">
                             </div>
                         </div>
 

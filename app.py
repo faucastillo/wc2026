@@ -375,38 +375,43 @@ def index():
 
 @app.route('/api/sync', methods=['POST'])
 def sync_state():
-    """Synchronize match results from the frontend and recalculate tournament state."""
+    """Synchronize match results from the frontend and recalculate tournament state.
+    
+    Each sync call is self-contained: the server resets all non-locked state
+    and applies only the data from this request. This ensures per-user isolation
+    since each browser sends its own complete state from localStorage.
+    """
     data = request.json or {}
     lock = data.get('lock_enabled', True)
-
-    if 'playoff_selection' in data:
-        selection = data['playoff_selection']
-        playoff_winners_state[selection['id']] = selection['winner']
 
     all_matches = [m for g in wc_2026.groups.values() for m in g.matches] + wc_2026.bracket
     real_data = load_real_results()
     real_ids = set(real_data.get('scores', {}).keys()) if lock else set()
     real_playoff_ids = set(real_data.get('playoff_winners', {}).keys()) if lock else set()
 
-    if data.get('reset_all'):
-        for m in all_matches:
-            if str(m.match_id) not in real_ids:
-                m.reset()
-        # Clear playoff selections except locked ones
-        for pid in list(playoff_winners_state.keys()):
-            if pid not in real_playoff_ids:
-                del playoff_winners_state[pid]
-    elif data.get('reset_group'):
-        if group := wc_2026.groups.get(data.get('reset_group')):
-            for m in group.matches:
-                if str(m.match_id) not in real_ids:
-                    m.reset()
-            # Also clear playoff selections for placeholder teams (skip locked)
-            for team in group.teams:
-                if team.is_placeholder and team.id in playoff_winners_state:
-                    if team.id not in real_playoff_ids:
-                        del playoff_winners_state[team.id]
+    # Reset ALL non-locked matches so this client's state is self-contained
+    for m in all_matches:
+        if str(m.match_id) not in real_ids:
+            m.reset()
 
+    # Reset ALL non-locked playoff selections
+    for pid in list(playoff_winners_state.keys()):
+        if pid not in real_playoff_ids:
+            del playoff_winners_state[pid]
+
+    # Apply this client's playoff selections (full set from localStorage)
+    if 'playoff_selections' in data:
+        for pid, winner in data['playoff_selections'].items():
+            if pid not in real_playoff_ids:
+                playoff_winners_state[pid] = winner
+
+    # Backward compat: single selection from a button click
+    if 'playoff_selection' in data:
+        selection = data['playoff_selection']
+        if selection['id'] not in real_playoff_ids:
+            playoff_winners_state[selection['id']] = selection['winner']
+
+    # Apply this client's scores
     if scores_data := data.get('scores', {}):
         match_dict = {str(m.match_id): m for m in all_matches}
         for m_id, scores in scores_data.items():
@@ -440,13 +445,21 @@ def randomize_matches():
     real_ids = set(real_data.get('scores', {}).keys()) if lock else set()
     real_playoff_ids = set(real_data.get('playoff_winners', {}).keys()) if lock else set()
 
+    # Reset ALL non-locked state first for isolation
+    all_matches = [m for g in wc_2026.groups.values() for m in g.matches] + wc_2026.bracket
+    for m in all_matches:
+        if str(m.match_id) not in real_ids:
+            m.reset()
+    for pid in list(playoff_winners_state.keys()):
+        if pid not in real_playoff_ids:
+            del playoff_winners_state[pid]
+
     # Randomly select playoff winners (skip locked ones)
     for pid, config in PLAYOFF_CONFIG.items():
         if pid not in real_playoff_ids:
             playoff_winners_state[pid] = random.choice(config['candidates'])
 
-    # Simulate group stage (skip real results if locked)
-
+    # Simulate group stage
     all_group_matches = [m for g in wc_2026.groups.values() for m in g.matches]
     for m in all_group_matches:
         if str(m.match_id) not in real_ids:
@@ -454,12 +467,6 @@ def randomize_matches():
 
     TournamentCalculator.calculate_group_stage(wc_2026)
     best_thirds = TournamentCalculator.get_best_third_teams(wc_2026, 8)
-    KnockoutStageBuilder.build_knockout_stage(wc_2026, best_thirds)
-
-    # Simulate knockout stage (reset first to clear stale bracket data)
-    for m in wc_2026.bracket:
-        m.reset()
-
     KnockoutStageBuilder.build_knockout_stage(wc_2026, best_thirds)
 
     for m in wc_2026.bracket:
@@ -486,18 +493,27 @@ def randomize_group():
     if not group_letter or group_letter not in wc_2026.groups:
         return jsonify({"status": "error", "message": "Invalid group"}), 400
 
-    group = wc_2026.groups[group_letter]
-
-    # Randomize all matches in this group (skip real results if locked)
+    # Reset ALL non-locked state first for isolation
     real_data = load_real_results()
     real_ids = set(real_data.get('scores', {}).keys()) if lock else set()
     real_playoff_ids = set(real_data.get('playoff_winners', {}).keys()) if lock else set()
+    
+    all_matches = [m for g in wc_2026.groups.values() for m in g.matches] + wc_2026.bracket
+    for m in all_matches:
+        if str(m.match_id) not in real_ids:
+            m.reset()
+    for pid in list(playoff_winners_state.keys()):
+        if pid not in real_playoff_ids:
+            del playoff_winners_state[pid]
+
+    group = wc_2026.groups[group_letter]
 
     # If the group has a playoff placeholder, randomly select a winner (skip locked)
     for team in group.teams:
         if team.is_placeholder and team.id in PLAYOFF_CONFIG:
             if team.id not in real_playoff_ids:
                 playoff_winners_state[team.id] = random.choice(PLAYOFF_CONFIG[team.id]['candidates'])
+    
     for m in group.matches:
         if str(m.match_id) not in real_ids:
             m.set_scores(get_realistic_goals(), get_realistic_goals())
