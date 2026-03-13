@@ -232,6 +232,10 @@
         let realPlayoffWinnersData = {};
         let lockEnabled = true;
 
+        // Sync debouncing & abort control to prevent race conditions
+        let syncAbortController = null;
+        let updateMatchTimer = null;
+
         document.addEventListener("DOMContentLoaded", async () => {
             const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
             await syncBackend({ scores: savedScores }, true); 
@@ -296,27 +300,48 @@
             else activeBtn.className = UI_STYLES.groupActive;
         }
 
-        async function updateMatch(matchId) {
+        function updateMatch(matchId) {
             if (isMatchLocked(matchId)) return;
-            const inputA = document.getElementById(`a_${matchId}`);
-            const inputB = document.getElementById(`b_${matchId}`);
-            const penA = document.getElementById(`pen_a_${matchId}`);
-            const penB = document.getElementById(`pen_b_${matchId}`);
-            const penContainer = document.getElementById(`penalties_${matchId}`);
-            const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+            // Save to localStorage immediately so state is never lost
+            collectAndSaveScores();
+            updateAllCircles();
+            // Debounce the backend sync to batch rapid edits
+            clearTimeout(updateMatchTimer);
+            updateMatchTimer = setTimeout(() => {
+                const savedScores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+                syncBackend({ scores: savedScores }, false);
+            }, 150);
+        }
 
-            const valA = inputA ? inputA.value : "";
-            const valB = inputB ? inputB.value : "";
+        function collectAndSaveScores() {
+            const savedScores = {};
+            document.querySelectorAll('input[id^="a_"]').forEach(inputA => {
+                const matchId = inputA.id.replace('a_', '');
+                const inputB = document.getElementById(`b_${matchId}`);
+                const penA = document.getElementById(`pen_a_${matchId}`);
+                const penB = document.getElementById(`pen_b_${matchId}`);
+                const penContainer = document.getElementById(`penalties_${matchId}`);
+                const valA = inputA.value;
+                const valB = inputB ? inputB.value : "";
 
-            if (valA !== "" || valB !== "") {
-                const matchData = { a: valA, b: valB };
-                if (valA === valB && valA !== "") {
-                    if (penContainer) {
-                        penContainer.classList.replace('invisible', 'visible');
-                        penContainer.classList.replace('opacity-0', 'opacity-100');
+                if (valA !== "" || valB !== "") {
+                    const matchData = { a: valA, b: valB };
+                    if (valA === valB && valA !== "") {
+                        if (penContainer) {
+                            penContainer.classList.replace('invisible', 'visible');
+                            penContainer.classList.replace('opacity-0', 'opacity-100');
+                        }
+                        if (penA && penA.value !== "") matchData.pen_a = penA.value;
+                        if (penB && penB.value !== "") matchData.pen_b = penB.value;
+                    } else {
+                        if (penContainer) {
+                            penContainer.classList.replace('visible', 'invisible');
+                            penContainer.classList.replace('opacity-100', 'opacity-0');
+                        }
+                        if (penA) penA.value = '';
+                        if (penB) penB.value = '';
                     }
-                    if (penA && penA.value !== "") matchData.pen_a = penA.value;
-                    if (penB && penB.value !== "") matchData.pen_b = penB.value;
+                    savedScores[matchId] = matchData;
                 } else {
                     if (penContainer) {
                         penContainer.classList.replace('visible', 'invisible');
@@ -325,20 +350,9 @@
                     if (penA) penA.value = '';
                     if (penB) penB.value = '';
                 }
-                savedScores[matchId] = matchData;
-            } else {
-                delete savedScores[matchId];
-                if (penContainer) {
-                    penContainer.classList.replace('visible', 'invisible');
-                    penContainer.classList.replace('opacity-100', 'opacity-0');
-                }
-                if (penA) penA.value = '';
-                if (penB) penB.value = '';
-            }
-
+            });
             localStorage.setItem('wc_scores', JSON.stringify(savedScores));
-            updateAllCircles(); 
-            await syncBackend({ scores: savedScores }, false); 
+            return savedScores;
         }
 
         async function selectPlayoffWinner(placeholderId, name, iso) {
@@ -409,10 +423,15 @@
         }
 
         async function syncBackend(payload, fullRender = false) {
+            // Abort any in-flight sync to prevent stale responses overwriting fresh input
+            if (syncAbortController) syncAbortController.abort();
+            syncAbortController = new AbortController();
+            const { signal } = syncAbortController;
             try {
                 const fullPayload = { ...payload, lock_enabled: lockEnabled };
                 const res = await fetch('/api/sync', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fullPayload)
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fullPayload),
+                    signal
                 });
                 if (!res.ok) throw new Error(`Server error: ${res.status}`);
                 const data = await res.json();
@@ -425,6 +444,7 @@
                     }
                 }
             } catch (error) {
+                if (error.name === 'AbortError') return; // Expected: newer request replaced this one
                 console.error('Sync failed:', error);
                 showToast('Connection error. Your changes are saved locally.');
             }
@@ -599,7 +619,8 @@
             renderThirdsTable(data.thirds);
             renderKnockouts(data.knockouts); 
             
-            // Sync all inputs with current scores
+            // Sync all inputs with current scores, but skip the focused input
+            // to avoid clobbering what the user is actively typing
             document.querySelectorAll('input[id^="a_"]').forEach(inputA => {
                 const matchId = inputA.id.replace('a_', '');
                 const inputB = document.getElementById(`b_${matchId}`);
@@ -609,16 +630,16 @@
                 
                 if (currentScores[matchId]) {
                     const s = currentScores[matchId];
-                    if (inputA.value !== String(s.a)) inputA.value = s.a;
-                    if (inputB && inputB.value !== String(s.b)) inputB.value = s.b;
+                    if (inputA.id !== activeId && inputA.value !== String(s.a)) inputA.value = s.a;
+                    if (inputB && inputB.id !== activeId && inputB.value !== String(s.b)) inputB.value = s.b;
                     
                     if (String(s.a) !== "" && String(s.a) === String(s.b)) {
                         if (penContainer) {
                             penContainer.classList.replace('invisible', 'visible');
                             penContainer.classList.replace('opacity-0', 'opacity-100');
                         }
-                        if (pA && s.pen_a !== undefined && pA.value !== String(s.pen_a)) pA.value = s.pen_a;
-                        if (pB && s.pen_b !== undefined && pB.value !== String(s.pen_b)) pB.value = s.pen_b;
+                        if (pA && pA.id !== activeId && s.pen_a !== undefined && pA.value !== String(s.pen_a)) pA.value = s.pen_a;
+                        if (pB && pB.id !== activeId && s.pen_b !== undefined && pB.value !== String(s.pen_b)) pB.value = s.pen_b;
                     } else {
                         if (penContainer) {
                             penContainer.classList.replace('visible', 'invisible');
@@ -626,14 +647,14 @@
                         }
                     }
                 } else {
-                    if (inputA.value !== "") inputA.value = "";
-                    if (inputB && inputB.value !== "") inputB.value = "";
+                    if (inputA.id !== activeId && inputA.value !== "") inputA.value = "";
+                    if (inputB && inputB.id !== activeId && inputB.value !== "") inputB.value = "";
                     if (penContainer) {
                         penContainer.classList.replace('visible', 'invisible');
                         penContainer.classList.replace('opacity-100', 'opacity-0');
                     }
-                    if (pA) pA.value = "";
-                    if (pB) pB.value = "";
+                    if (pA && pA.id !== activeId) pA.value = "";
+                    if (pB && pB.id !== activeId) pB.value = "";
                 }
             });
 
